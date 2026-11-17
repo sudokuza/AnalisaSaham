@@ -6,7 +6,7 @@ const state = {
   stocks: [],
   market: {},
   meta: {},
-  mode: 'snapshot',
+  mode: 'loading',
   activeFilter: 'all',
   query: '',
   sort: 'score',
@@ -141,7 +141,7 @@ async function loadSnapshot() {
     state.market = market || {};
     state.meta = meta || {};
   }
-  setStatus('snapshot', 'Snapshot lokal', 'Snapshot data');
+  setStatus('loading', 'Menghubungkan data live…', 'Mencoba sinkronisasi');
   renderAll();
 }
 
@@ -461,7 +461,7 @@ function renderDataNotice(quoteCount, rosterCount) {
   const quoteText = `${numberFormat(0).format(quoteCount)}/${numberFormat(0).format(rosterCount)} emiten punya quote; ${numberFormat(0).format(unavailable)} sisanya ditandai \"Tidak ada quote\" (umumnya suspen/delisting).`;
   const candidateText = candidateReady ? '' : ' Flag Kandidat belum aktif.';
   const note = $('#data-note-text');
-  const staleText = state.mode === 'live' ? '' : '⚠ Data live gagal dimuat: tabel memakai snapshot lama, harga bukan real-time. ';
+  const staleText = state.mode === 'snapshot' ? '⚠ Data live gagal dimuat: tabel memakai snapshot lama, harga bukan real-time. ' : '';
   const delayText = state.mode === 'live' ? ' Harga dari TradingView bisa tertunda; cocokkan dengan aplikasi sekuritas sebelum eksekusi.' : '';
   if (note) note.textContent = `${staleText}${rosterText} ${quoteText}${candidateText}${delayText}`;
 }
@@ -505,9 +505,10 @@ function updateTimestamp() {
   const snapshot = state.meta?.snapshotAt;
   const marketUpdated = state.market?.diperbarui;
   const live = state.mode === 'live';
-  const display = live ? (synced || currentWibTime()) : (snapshot || marketUpdated || '—');
-  $('#data-time').textContent = live ? display : `SNAPSHOT LAMA · ${display}`;
-  $('#last-refresh-inline').textContent = live ? `Live · diambil ${display}` : `⚠ Snapshot lama · ${display}`;
+  const loading = state.mode === 'loading';
+  const display = live ? (synced || currentWibTime()) : loading ? 'Menghubungkan ke data live…' : (snapshot || marketUpdated || '—');
+  $('#data-time').textContent = live ? display : loading ? 'MEMUAT DATA LIVE…' : `SNAPSHOT LAMA · ${display}`;
+  $('#last-refresh-inline').textContent = live ? `Live · diambil ${display}` : loading ? 'Mengambil data live…' : `⚠ Snapshot lama · ${display}`;
 }
 
 function renderAll() {
@@ -788,7 +789,7 @@ function startAutoRefresh() {
 async function init() {
   bindEvents();
   $('#today-label').textContent = currentWibDate();
-  setStatus('snapshot', 'Memuat snapshot…', 'Snapshot data');
+  setStatus('loading', 'Menghubungkan data live…', 'Mencoba sinkronisasi');
   try {
     await loadSnapshot();
   } catch (error) {
